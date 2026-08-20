@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Shared Resource Platform</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #f3f4f6;
+    --card: #ffffff;
+    --ink: #111827;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --accent: #4f46e5;
+    --accent-dark: #3730a3;
+    --danger: #dc2626;
+    --danger-bg: #fee2e2;
+    --owner: #7c3aed;
+    --owner-bg: #f3e8ff;
+    --viewer: #0891b2;
+    --viewer-bg: #ecfeff;
+    --radius: 12px;
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    margin: 0;
+    color: var(--ink);
+  }
+  header {
+    background: var(--ink);
+    color: #fff;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  header .title { font-weight: 700; font-size: 16px; }
+  header .right { display: flex; align-items: center; gap: 12px; }
+  #status {
+    font-size: 12px; padding: 4px 10px; border-radius: 999px;
+    background: #374151; color: #d1d5db;
+  }
+  #status.live { background: #065f46; color: #a7f3d0; }
+  #whoami { font-size: 12px; color: #9ca3af; }
+  .logout-btn {
+    background: transparent; border: 1px solid #4b5563; color: #d1d5db;
+    padding: 5px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; margin: 0;
+  }
+  .logout-btn:hover { background: #1f2937; }
+
+  .wrap { max-width: 680px; margin: 24px auto; padding: 0 16px 60px; }
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.05);
+    border: 1px solid var(--border);
+  }
+  .card h3 { margin: 0 0 12px; font-size: 15px; color: var(--ink); display:flex; align-items:center; gap:8px; }
+  .card h3 small { font-weight: 400; color: var(--muted); }
+
+  label { font-size: 12px; color: var(--muted); display: block; margin-top: 10px; }
+  input, textarea, select {
+    font-size: 14px; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--border); width: 100%; margin-top: 4px;
+    font-family: inherit; background: #fff;
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+
+  button {
+    font-size: 14px; padding: 10px 14px; border-radius: 8px; border: none;
+    background: var(--accent); color: #fff; cursor: pointer; margin-top: 12px;
+    font-weight: 600; transition: background .15s;
+  }
+  button:hover { background: var(--accent-dark); }
+  button.secondary { background: #eef0f4; color: var(--ink); }
+  button.secondary:hover { background: #e2e4ea; }
+  button.danger { background: var(--danger-bg); color: var(--danger); }
+  button.danger:hover { background: #fecaca; }
+  button.small { padding: 5px 12px; font-size: 12px; margin-top: 0; width: auto; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  .row.tight > * { flex: none; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  .badge {
+    display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+    padding: 3px 8px; border-radius: 999px; text-transform: uppercase;
+  }
+  .badge.type { background: #eef2ff; color: var(--accent-dark); }
+  .badge.owner { background: var(--owner-bg); color: var(--owner); }
+  .badge.viewer { background: var(--viewer-bg); color: var(--viewer); }
+
+  .viewer-notice {
+    background: var(--viewer-bg); border: 1px solid #a5f3fc; color: #155e75;
+    border-radius: 10px; padding: 12px 14px; font-size: 13px;
+  }
+
+  .member-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .member-row:last-child { border-bottom: none; }
+  .member-row .who { display: flex; flex-direction: column; }
+  .member-row .who .name { font-weight: 600; }
+  .member-row .who .email { color: var(--muted); font-size: 12px; }
+  .member-row .actions { display: flex; align-items: center; gap: 8px; }
+
+  .post {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 0;
+  }
+  .post:first-child { padding-top: 0; }
+  .post:last-child { border-bottom: none; padding-bottom: 0; }
+  .post-meta {
+    font-size: 12px; color: var(--muted); margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .post-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+  .post-text { font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
+
+  .media-box { margin-top: 10px; border-radius: 10px; overflow: hidden; background: #000; }
+  .media-box img, .media-box video { display: block; width: 100%; max-height: 420px; object-fit: contain; background:#000; }
+  .media-box audio { width: 100%; display: block; margin-top: 6px; }
+  .file-chip {
+    display: flex; align-items: center; gap: 10px; margin-top: 8px;
+    padding: 10px 14px; background: #f9fafb; border: 1px solid var(--border);
+    border-radius: 10px; text-decoration: none; color: var(--ink); font-size: 13px;
+  }
+  .file-chip:hover { background: #f3f4f6; }
+  .file-chip .icon { font-size: 20px; }
+
+  .like-btn {
+    width: auto; display: inline-flex; align-items: center; gap: 6px;
+    background: #fff; color: var(--ink); border: 1px solid var(--border);
+    padding: 6px 12px; margin-top: 12px; border-radius: 999px; font-weight: 600;
+  }
+  .like-btn.liked { background: var(--danger-bg); border-color: #fca5a5; color: var(--danger); }
+
+  .empty-state { text-align: center; color: var(--muted); font-size: 13px; padding: 24px 0; }
+  .hidden { display: none !important; }
+  .status-line { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .error-line { font-size: 12px; color: var(--danger); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="title">📦 Shared Resource Platform</span>
+  <span class="right">
+    <span id="whoami" class="hidden"></span>
+    <span id="status">not connected</span>
+    <button id="logoutBtn" class="logout-btn hidden" onclick="logout()">Log out</button>
+  </span>
+</header>
+
+<div class="wrap">
+
+  <!-- AUTH -->
+  <div class="card" id="authCard">
+    <h3>Login or create an account</h3>
+    <label>Full name <small>(only needed to register)</small></label>
+    <input id="fullName" placeholder="Jashu" value="Jashu" />
+    <label>Email</label>
+    <input id="email" placeholder="you@example.com" value="jashu@example.com" />
+    <label>Password</label>
+    <input id="password" type="password" placeholder="••••••••" value="password123" />
+    <div class="row">
+      <button class="secondary" onclick="register()">Register</button>
+      <button onclick="login()">Login</button>
+    </div>
+    <div class="error-line" id="authError"></div>
+  </div>
+
+  <!-- SPACES -->
+  <div class="card hidden" id="spaceCard">
+    <h3>Your shared spaces</h3>
+    <select id="spaceSelect" onchange="onSpaceChange()">
+      <option value="">-- pick a space --</option>
+    </select>
+    <div class="row">
+      <input id="newSpaceName" placeholder="New space name, e.g. Family" />
+      <button class="secondary" onclick="createSpace()" style="width:auto;white-space:nowrap;">+ Create</button>
+    </div>
+  </div>
+
+  <!-- SPACE SETTINGS (owner only) -->
+  <div class="card hidden" id="settingsCard">
+    <h3>Space settings <span class="badge owner">Owner</span></h3>
+    <label>Name</label>
+    <input id="settingsName" />
+    <label>Description</label>
+    <textarea id="settingsDescription" placeholder="What's this space for?"></textarea>
+    <div class="row">
+      <button class="secondary" onclick="saveSpaceSettings()">Save changes</button>
+      <button class="danger" onclick="deleteCurrentSpace()">Delete space</button>
+    </div>
+    <div class="status-line" id="settingsStatus"></div>
+  </div>
+
+  <!-- VIEWER NOTICE -->
+  <div class="card hidden" id="viewerNotice">
+    <h3>Your access <span class="badge viewer">Viewer</span></h3>
+    <div class="viewer-notice">
+      You can view, download, stream, and like everything in this space —
+      only the owner can post, upload, manage members, or change settings.
+    </div>
+  </div>
+
+  <!-- MEMBERS / SHARE SPACE -->
+  <div class="card hidden" id="membersCard">
+    <h3>People in this space</h3>
+    <div id="membersList"></div>
+
+    <div id="addMemberBox" class="hidden">
+      <hr class="divider" />
+      <label>Share this space with someone (they must already have an account)</label>
+      <div class="row">
+        <input id="addMemberEmail" placeholder="friend@example.com" />
+        <select id="addMemberRole" style="max-width:130px;">
+          <option value="VIEWER">Viewer</option>
+          <option value="OWNER">Owner</option>
+        </select>
+      </div>
+      <button class="secondary" onclick="addMember()">+ Add to space</button>
+      <div class="status-line" id="memberStatus"></div>
+    </div>
+  </div>
+
+  <!-- COMPOSE (owner only) -->
+  <div class="card hidden" id="postCard">
+    <h3>Share something into this space</h3>
+
+    <label>Text post</label>
+    <input id="postTitle" placeholder="Title (optional)" />
+    <textarea id="postContent" placeholder="What's on your mind?"></textarea>
+    <button onclick="createPost()">Post text</button>
+
+    <hr class="divider" />
+
+    <label>Or upload a file (image / video / audio / pdf / zip...)</label>
+    <input id="fileTitle" placeholder="Title (optional)" />
+    <input id="fileInput" type="file" />
+    <button class="secondary" onclick="uploadFile()">Upload file</button>
+    <div class="status-line" id="uploadStatus"></div>
+  </div>
+
+  <!-- FEED -->
+  <div class="card hidden" id="feedCard">
+    <h3>What's been shared <small id="feedSpaceName"></small></h3>
+    <div id="feed"></div>
+  </div>
+
+</div>
+
+<script>
+const API = '/api/v1';
+let token = null, userId = null, userEmail = null;
+let currentSpaceId = null, currentRole = null;
+let spacesById = {};
+let ws = null;
+
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      ...(opts.headers || {})
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || res.statusText);
+  return data;
+}
+
+// Separate helper for file uploads: don't set Content-Type manually —
+// the browser sets the multipart boundary itself for FormData bodies.
+async function apiUpload(path, formData) {
+  const res = await fetch(API + path, {
+    method: 'POST',
+    headers: token ? { Authorization: 'Bearer ' + token } : {},
+    body: formData
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || res.statusText);
+  return data;
+}
+
+// Native <video>/<audio>/<img> tags can't send an Authorization header,
+// so the server also accepts the token as a query param on /stream and
+// /download. This lets the browser stream the file natively (proper
+// seeking, no loading the whole file into memory first).
+function mediaUrl(resourceId, kind = 'stream') {
+  return `${API}/resources/${resourceId}/${kind}?token=${encodeURIComponent(token)}`;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+/* ---------- AUTH ---------- */
+
+async function register() {
+  document.getElementById('authError').textContent = '';
+  try {
+    await api('/auth/register', { method: 'POST', body: {
+      fullName: fullName.value, email: email.value, password: password.value
+    }});
+    document.getElementById('authError').style.color = '#059669';
+    document.getElementById('authError').textContent = 'Registered — now click Login';
+  } catch (e) {
+    document.getElementById('authError').style.color = '#dc2626';
+    document.getElementById('authError').textContent = 'Register failed: ' + e.message;
+  }
+}
+
+async function login() {
+  document.getElementById('authError').textContent = '';
+  try {
+    const data = await api('/auth/login', { method: 'POST', body: {
+      email: email.value, password: password.value
+    }});
+    token = data.data.accessToken;
+    userId = data.data.user.id;
+    userEmail = data.data.user.email;
+
+    document.getElementById('authCard').classList.add('hidden');
+    document.getElementById('spaceCard').classList.remove('hidden');
+    document.getElementById('whoami').textContent = userEmail;
+    document.getElementById('whoami').classList.remove('hidden');
+    document.getElementById('logoutBtn').classList.remove('hidden');
+
+    connectSocket();
+    loadSpaces();
+  } catch (e) {
+    document.getElementById('authError').style.color = '#dc2626';
+    document.getElementById('authError').textContent = 'Login failed: ' + e.message;
+  }
+}
+
+function logout() {
+  if (ws) ws.close();
+  token = null; userId = null; userEmail = null;
+  currentSpaceId = null; currentRole = null; spacesById = {};
+
+  ['spaceCard','settingsCard','viewerNotice','membersCard','postCard','feedCard'].forEach(id =>
+    document.getElementById(id).classList.add('hidden'));
+  document.getElementById('authCard').classList.remove('hidden');
+  document.getElementById('whoami').classList.add('hidden');
+  document.getElementById('logoutBtn').classList.add('hidden');
+  document.getElementById('status').textContent = 'not connected';
+  document.getElementById('status').classList.remove('live');
+}
+
+/* ---------- SPACES ---------- */
+
+async function loadSpaces() {
+  const data = await api('/shared-spaces');
+  spacesById = {};
+  const sel = document.getElementById('spaceSelect');
+  sel.innerHTML = '<option value="">-- pick a space --</option>';
+  data.data.forEach(s => {
+    spacesById[s.id] = s;
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = `${s.name} (${s.my_role})`;
+    sel.appendChild(opt);
+  });
+}
+
+async function createSpace() {
+  const name = document.getElementById('newSpaceName').value;
+  if (!name) return;
+  await api('/shared-spaces', { method: 'POST', body: { name } });
+  document.getElementById('newSpaceName').value = '';
+  await loadSpaces();
+}
+
+function onSpaceChange() {
+  currentSpaceId = document.getElementById('spaceSelect').value;
+  const settingsCard = document.getElementById('settingsCard');
+  const viewerNotice = document.getElementById('viewerNotice');
+  const membersCard = document.getElementById('membersCard');
+  const postCard = document.getElementById('postCard');
+  const feedCard = document.getElementById('feedCard');
+  const addMemberBox = document.getElementById('addMemberBox');
+
+  if (!currentSpaceId) {
+    [settingsCard, viewerNotice, membersCard, postCard, feedCard].forEach(c => c.classList.add('hidden'));
+    return;
+  }
+
+  const space = spacesById[currentSpaceId];
+  currentRole = space.my_role;
+  const isOwner = currentRole === 'OWNER';
+
+  settingsCard.classList.toggle('hidden', !isOwner);
+  viewerNotice.classList.toggle('hidden', isOwner);
+  postCard.classList.toggle('hidden', !isOwner);
+  membersCard.classList.remove('hidden');
+  feedCard.classList.remove('hidden');
+  addMemberBox.classList.toggle('hidden', !isOwner);
+
+  document.getElementById('settingsName').value = space.name;
+  document.getElementById('settingsDescription').value = space.description || '';
+  document.getElementById('feedSpaceName').textContent = `— ${space.name}`;
+
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({ event: 'join_space', spaceId: currentSpaceId }));
+  }
+
+  loadMembers();
+  loadFeed();
+}
+
+async function saveSpaceSettings() {
+  const status = document.getElementById('settingsStatus');
+  try {
+    const name = document.getElementById('settingsName').value;
+    const description = document.getElementById('settingsDescription').value;
+    await api(`/shared-spaces/${currentSpaceId}`, { method: 'PATCH', body: { name, description } });
+    status.style.color = '#059669';
+    status.textContent = 'Saved ✔';
+    await loadSpaces();
+    document.getElementById('spaceSelect').value = currentSpaceId;
+    document.getElementById('feedSpaceName').textContent = `— ${name}`;
+  } catch (e) {
+    status.style.color = '#dc2626';
+    status.textContent = 'Failed: ' + e.message;
+  }
+}
+
+async function deleteCurrentSpace() {
+  const space = spacesById[currentSpaceId];
+  if (!confirm(`Delete "${space.name}"? This can't be undone.`)) return;
+  await api(`/shared-spaces/${currentSpaceId}`, { method: 'DELETE' });
+  currentSpaceId = null;
+  await loadSpaces();
+  document.getElementById('spaceSelect').value = '';
+  onSpaceChange();
+}
+
+/* ---------- MEMBERS ("share this space") ---------- */
+
+async function loadMembers() {
+  const data = await api(`/shared-spaces/${currentSpaceId}/members`);
+  const list = document.getElementById('membersList');
+  list.innerHTML = '';
+  data.data.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'member-row';
+    const canRemove = currentRole === 'OWNER';
+    row.innerHTML = `
+      <div class="who">
+        <span class="name">${escapeHtml(m.full_name)}</span>
+        <span class="email">${escapeHtml(m.email)}</span>
+      </div>
+      <div class="actions">
+        <span class="badge ${m.role === 'OWNER' ? 'owner' : 'viewer'}">${m.role}</span>
+        ${canRemove ? `<button class="small danger" onclick="removeMember(${m.user_id})">Remove</button>` : ''}
+      </div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+async function addMember() {
+  const status = document.getElementById('memberStatus');
+  const emailVal = document.getElementById('addMemberEmail').value;
+  const roleVal = document.getElementById('addMemberRole').value;
+  if (!emailVal) { status.textContent = 'Enter an email first'; return; }
+  try {
+    await api(`/shared-spaces/${currentSpaceId}/members`, {
+      method: 'POST', body: { email: emailVal, role: roleVal }
+    });
+    status.style.color = '#059669';
+    status.textContent = `Added ${emailVal} ✔`;
+    document.getElementById('addMemberEmail').value = '';
+    loadMembers();
+  } catch (e) {
+    status.style.color = '#dc2626';
+    status.textContent = 'Failed: ' + e.message;
+  }
+}
+
+async function removeMember(memberUserId) {
+  if (!confirm('Remove this member from the space?')) return;
+  await api(`/shared-spaces/${currentSpaceId}/members/${memberUserId}`, { method: 'DELETE' });
+  loadMembers();
+}
+
+/* ---------- FEED / POSTS ---------- */
+
+async function loadFeed() {
+  const data = await api(`/shared-spaces/${currentSpaceId}/resources`);
+  const feed = document.getElementById('feed');
+  feed.innerHTML = '';
+  if (!data.data.length) {
+    feed.innerHTML = '<div class="empty-state">Nothing shared here yet — be the first.</div>';
+    return;
+  }
+  data.data.forEach(p => renderPost(p, false));
+}
+
+function renderPost(p, prepend = true) {
+  if (p.spaceId && p.spaceId !== currentSpaceId) return; // ignore live events for other spaces
+
+  const resourceType = p.resourceType || p.resource_type || 'TEXT';
+  const originalName = p.originalName || p.original_name;
+  const postedBy = p.postedBy || p.posted_by || 'someone';
+  const createdAt = p.createdAt || p.created_at;
+  const likeCount = p.likeCount ?? p.like_count ?? 0;
+
+  const emptyState = document.querySelector('#feed .empty-state');
+  if (emptyState) emptyState.remove();
+  const existing = document.getElementById('post-' + p.id);
+  if (existing) return; // avoid dupes if a broadcast arrives after a manual reload
+
+  const div = document.createElement('div');
+  div.className = 'post';
+  div.id = 'post-' + p.id;
+
+  let bodyHtml;
+  if (resourceType === 'TEXT') {
+    bodyHtml = `<div class="post-text">${escapeHtml(p.content || p.textContent || p.text_content || '')}</div>`;
+  } else if (resourceType === 'IMAGE') {
+    bodyHtml = `<div class="media-box"><img src="${mediaUrl(p.id)}" alt="${escapeHtml(originalName || '')}" /></div>`;
+  } else if (resourceType === 'VIDEO') {
+    bodyHtml = `<div class="media-box"><video controls preload="metadata" src="${mediaUrl(p.id)}"></video></div>`;
+  } else if (resourceType === 'AUDIO') {
+    bodyHtml = `<div class="media-box"><audio controls preload="metadata" src="${mediaUrl(p.id)}"></audio></div>`;
+  } else {
+    bodyHtml = `<a class="file-chip" href="${mediaUrl(p.id, 'download')}" download="${escapeHtml(originalName || 'file')}">
+      <span class="icon">📄</span> <span>${escapeHtml(originalName || 'Download file')}</span>
+    </a>`;
+  }
+
+  div.innerHTML = `
+    <div class="post-meta">
+      <span class="badge type">${resourceType}</span>
+      <span>${escapeHtml(postedBy)} · ${new Date(createdAt).toLocaleString()}</span>
+    </div>
+    ${p.title ? `<div class="post-title">${escapeHtml(p.title)}</div>` : ''}
+    ${bodyHtml}
+    <button class="like-btn" onclick="toggleLike('${p.id}', this)">❤ <span class="count">${likeCount}</span></button>
+  `;
+
+  const feed = document.getElementById('feed');
+  prepend ? feed.prepend(div) : feed.appendChild(div);
+}
+
+async function createPost() {
+  const title = document.getElementById('postTitle').value;
+  const content = document.getElementById('postContent').value;
+  if (!content) return;
+  await api(`/shared-spaces/${currentSpaceId}/resources`, {
+    method: 'POST', body: { title, content }
+  });
+  // no manual re-render needed — the WebSocket "new_post" event does it live
+  document.getElementById('postTitle').value = '';
+  document.getElementById('postContent').value = '';
+}
+
+async function uploadFile() {
+  const fileInput = document.getElementById('fileInput');
+  const title = document.getElementById('fileTitle').value;
+  const status = document.getElementById('uploadStatus');
+  if (!fileInput.files.length) { status.textContent = 'Pick a file first'; return; }
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  if (title) formData.append('title', title);
+
+  status.style.color = '#6b7280';
+  status.textContent = 'Uploading…';
+  try {
+    await apiUpload(`/shared-spaces/${currentSpaceId}/resources/upload`, formData);
+    status.style.color = '#059669';
+    status.textContent = 'Uploaded ✔ — appears in the feed below live';
+    fileInput.value = '';
+    document.getElementById('fileTitle').value = '';
+    // no manual re-render needed — the WebSocket "new_post" event does it live
+  } catch (e) {
+    status.style.color = '#dc2626';
+    status.textContent = 'Upload failed: ' + e.message;
+  }
+}
+
+async function toggleLike(resourceId, btn) {
+  const data = await api(`/resources/${resourceId}/like`, { method: 'POST' });
+  btn.classList.toggle('liked', data.data.liked);
+  // the like COUNT itself updates live via the WebSocket "like_updated" broadcast below,
+  // so every tab watching this space (including this one) stays in sync
+}
+
+/* ---------- REALTIME ---------- */
+
+function connectSocket() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}?token=${encodeURIComponent(token)}`);
+  const statusEl = document.getElementById('status');
+  ws.onopen = () => {
+    statusEl.textContent = 'live';
+    statusEl.classList.add('live');
+    if (currentSpaceId) ws.send(JSON.stringify({ event: 'join_space', spaceId: currentSpaceId }));
+  };
+  ws.onclose = () => { statusEl.textContent = 'disconnected'; statusEl.classList.remove('live'); };
+  ws.onmessage = (msg) => {
+    const { event, data } = JSON.parse(msg.data);
+    if (event === 'new_post') {
+      renderPost(data, true);
+    }
+    if (event === 'like_updated') {
+      const el = document.querySelector(`#post-${data.resourceId} .count`);
+      if (el) el.textContent = data.likeCount;
+    }
+  };
+}
+</script>
+</body>
+</html>
